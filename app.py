@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Dashboard Interaktif Pertumbuhan Tunas Pohon di bawah Perlakuan Zat Pengatur Tumbuh
 Tugas Python Streamlit - Dataset: Kaggle (cjs.csv)
@@ -10,25 +9,19 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-st.set_page_config(page_title="Dashboard Pertumbuhan Tunas", page_icon="🌳", layout="wide")
+st.set_page_config(page_title="Dashboard Pertumbuhan Tunas", page_icon="", layout="wide")
 
 DATA_PATH = Path(__file__).parent / "cjs.csv"
 
 
-# ------------------------------------------------------------------
-# 1. LOAD & CLEANING DATA
-# ------------------------------------------------------------------
 @st.cache_data
 def load_data() -> pd.DataFrame:
-    # Tanda "?" = ruas tidak ada (kolom INTERNODE) atau cabang tidak diketahui (kolom BR) -> NaN
     df = pd.read_csv(DATA_PATH, na_values="?")
     df = df.rename(columns={"TR": "Perlakuan", "TREE": "Pohon", "BR": "Cabang",
                             "TL": "Panjang_Tunas", "IN": "Jumlah_Ruas"})
-    # 12 baris punya cabang "?" -> beri label agar tidak NaN (NaN merusak filter/sorting)
     df["Cabang"] = df["Cabang"].fillna("Tidak diketahui")
     ruas_cols = [c for c in df.columns if c.startswith("INTERNODE_")]
     df[ruas_cols] = df[ruas_cols].apply(pd.to_numeric, errors="coerce")
-    # Fitur turunan: rata-rata panjang ruas per tunas
     df["Rata_Panjang_Ruas"] = df[ruas_cols].mean(axis=1)
     return df
 
@@ -36,10 +29,7 @@ def load_data() -> pd.DataFrame:
 df = load_data()
 RUAS_COLS = [c for c in df.columns if c.startswith("INTERNODE_")]
 
-# ------------------------------------------------------------------
-# 2. JUDUL & DESKRIPSI
-# ------------------------------------------------------------------
-st.title("🌳 Dashboard Pertumbuhan Tunas Pohon")
+st.title("Dashboard Pertumbuhan Tunas Pohon")
 st.markdown(
     """
 Dashboard ini menganalisis **pertumbuhan tunas (shoot) pohon** pada beberapa perlakuan
@@ -49,10 +39,8 @@ Setiap baris adalah satu tunas dengan **panjang total (TL)**, **jumlah ruas (IN)
 """
 )
 
-# ------------------------------------------------------------------
-# 3. FILTER INTERAKTIF (sidebar) - 4 filter
-# ------------------------------------------------------------------
-st.sidebar.header("🔎 Filter Data")
+
+st.sidebar.header("Filter Data")
 
 perlakuan_opsi = sorted(df["Perlakuan"].unique())
 f_perlakuan = st.sidebar.multiselect("Perlakuan", perlakuan_opsi, default=perlakuan_opsi)
@@ -79,10 +67,8 @@ if data.empty:
     st.warning("Tidak ada data yang cocok dengan filter. Ubah pilihan filter di sidebar.")
     st.stop()
 
-# ------------------------------------------------------------------
-# 4. KPI - 5 indikator
-# ------------------------------------------------------------------
-st.subheader("📌 Indikator Utama (KPI)")
+
+st.subheader("Indikator Utama (KPI)")
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Total Tunas Diamati", f"{len(data):,}")
 k2.metric("Rata-rata Panjang Tunas", f"{data['Panjang_Tunas'].mean():.2f}")
@@ -92,10 +78,7 @@ k5.metric("Jumlah Pohon", f"{data['Pohon'].nunique()}")
 
 st.divider()
 
-# ------------------------------------------------------------------
-# 5. VISUALISASI - 6 jenis chart
-# ------------------------------------------------------------------
-# (1) Bar chart + (2) Pie chart
+
 c1, c2 = st.columns(2)
 
 with c1:
@@ -114,7 +97,6 @@ with c2:
     fig = px.pie(pie_df, names="Perlakuan", values="Jumlah", hole=0.35)
     st.plotly_chart(fig, use_container_width=True)
 
-# (3) Histogram + (4) Scatter plot
 c3, c4 = st.columns(2)
 
 with c3:
@@ -134,7 +116,6 @@ with c4:
                      labels={"Jumlah_Ruas": "Jumlah ruas", "Panjang_Tunas": "Panjang tunas"})
     st.plotly_chart(fig, use_container_width=True)
 
-# (5) Line chart + (6) Heatmap
 c5, c6 = st.columns(2)
 
 with c5:
@@ -144,7 +125,7 @@ with c5:
     long_df["Posisi"] = long_df["Posisi"].str.replace("INTERNODE_", "", regex=False).astype(int)
     line_df = long_df.groupby(["Perlakuan", "Posisi"]).agg(
         Rata_Ruas=("Panjang_Ruas", "mean"), n=("Panjang_Ruas", "size")).reset_index()
-    line_df = line_df[line_df["n"] >= 20]  # hindari titik dengan sampel terlalu sedikit
+    line_df = line_df[line_df["n"] >= 20]
     fig = px.line(line_df, x="Posisi", y="Rata_Ruas", color="Perlakuan", markers=True,
                   labels={"Posisi": "Posisi ruas (dari pangkal)", "Rata_Ruas": "Rata-rata panjang ruas"})
     st.plotly_chart(fig, use_container_width=True)
@@ -157,13 +138,11 @@ with c6:
                     labels={"color": "Rata-rata TL", "x": "Cabang", "y": "Perlakuan"})
     st.plotly_chart(fig, use_container_width=True)
 
-# ------------------------------------------------------------------
-# 6. TABEL DATA & UNDUH
-# ------------------------------------------------------------------
-with st.expander("📄 Lihat data hasil filter"):
+
+with st.expander("Lihat data hasil filter"):
     tampil = ["Perlakuan", "Pohon", "Cabang", "Panjang_Tunas", "Jumlah_Ruas", "Rata_Panjang_Ruas"]
     st.dataframe(data[tampil], use_container_width=True)
-    st.download_button("⬇️ Unduh data terfilter (CSV)",
+    st.download_button("Unduh data terfilter (CSV)",
                        data[tampil].to_csv(index=False).encode("utf-8"),
                        file_name="data_terfilter.csv", mime="text/csv")
 
